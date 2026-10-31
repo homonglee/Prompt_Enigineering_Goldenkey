@@ -117,6 +117,11 @@ function parseGuidedDraft(task){
     return /^미정\s*[—–-]\s*필요한 정보는 확인해 주세요\.?$/.test(value)?'':value;
   });
 }
+function guidedTaskGuidance(answers){
+  const goal=answers[0],inputs=[answers[1],answers[3]].join(' ');
+  if(!/(양식|서식|폼|form|template)/i.test(goal)||!/(자료|파일|첨부|엑셀|워드|hwp|파워포인트|spreadsheet|document|file)/i.test(inputs))return '';
+  return '## 처리 기준\n첨부한 자료에서 양식의 각 항목에 해당하는 값을 찾아 채워 주세요. 원본 양식의 항목, 순서와 서식을 유지하고, 자료에 없는 값이나 서로 충돌하는 값은 임의로 만들지 말고 확인이 필요한 항목으로 표시하세요. 파일을 직접 수정할 수 없는 환경이라면 항목별 입력값과 근거 자료를 대응시켜 제시하세요.';
+}
 function buildPrompt(){
   const task=stripTrigger(field.value.trim());
   const guided=parseGuidedDraft(task);
@@ -125,6 +130,8 @@ function buildPrompt(){
     const headings=['요청','입력 자료와 처리 방식','역할','참고 예시','사용 맥락','결과 형식','작업 순서와 검토 기준'];
     guided.forEach((value,i)=>{if(value)sections.push(`## ${headings[i]}\n${value}`)});
     if(!guided[0])sections.unshift('## 요청\n수행할 작업 목표를 먼저 확인해 주세요.');
+    const guidance=guidedTaskGuidance(guided);
+    if(guidance)sections.push(guidance);
   }else sections.push(`## ${english?'Request':'요청'}\n${task}`);
   const additions=enhancements.map(value=>value.trim()).filter(Boolean);
   if(additions.length)sections.push(`## ${english?'Additional instructions':'추가 지침'}\n${additions.join('\n\n')}`);
