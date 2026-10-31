@@ -211,7 +211,17 @@ function generate(scroll=true){
   return true;
 }
 
-field.addEventListener('input',()=>{$('count').textContent=`${field.value.length.toLocaleString()} / 10,000`;clearMessage();updateMethodNote()});
+field.addEventListener('guided-draft:apply',event=>{
+  const draft=event.detail?.draft;
+  if(typeof draft!=='string'||!draft.trim()||draft.length>10000)return;
+  currentId=null;currentPrompt='';generatedPrompt='';finalEdited=false;
+  enhancements=Array(7).fill('');originalChecks=Array(7).fill(false);
+  $('results').hidden=true;$('final-prompt').value='';
+  for(const id of ['load-status','edit-status','save-status'])$(id).textContent='';
+  field.value=draft;field.dispatchEvent(new Event('input'));
+  $('draft-status').textContent='7가지 답변으로 초안을 채웠습니다. 내용을 확인한 뒤 황금키 생성을 누르세요.';
+});
+field.addEventListener('input',()=>{$('count').textContent=`${field.value.length.toLocaleString()} / 10,000`;clearMessage();$('draft-status').textContent='';updateMethodNote()});
 for(const id of ['document-type','methodology'])$(id).addEventListener('change',()=>{updateMethodNote();if(!$('results').hidden)refresh()});
 $('generate').addEventListener('click',()=>generate());
 $('sample').addEventListener('click',()=>{currentId=null;enhancements=Array(7).fill('');field.value='제조업 고객에게 보낼 머신비전 검사 제안 이메일을 작성해줘. 고객은 기존 수작업 검사에서 불량 누락을 줄이고 싶어 해.';field.dispatchEvent(new Event('input'));field.focus()});
