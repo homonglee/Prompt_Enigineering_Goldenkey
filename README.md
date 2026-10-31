@@ -2,7 +2,7 @@
 
 7가지 황금키 원칙으로 프롬프트를 진단하고 다듬는 브라우저 앱입니다. ‘대화로 프롬프트 초안 생성’에서 SSPECOS 질문에 차례로 답하고 초안을 검토·적용할 수 있습니다.
 
-- 앱 버전: v1.13.0
+- 앱 버전: v1.14.0
 - 원본 Sites: https://prompt-golden-key.homong-lee.chatgpt.site/
 - 연결 도메인: https://prompt.hovision.co.kr/
 - Sites 소스 커밋: `7057ca66f2991cb8adf4cb4873ba74026e879a30`

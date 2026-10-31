@@ -35,19 +35,19 @@ function blocked(s){return /(책|소설|기사|가사|논문|대본|영화|방�
 
 function autoText(i,task,en){
   const ko=[
-    `목표: “${task.slice(0,120)}” 요청을 구체적이고 실행 가능한 결과로 완성하세요. 필요한 범위와 대상이 불명확하면 짧게 밝혀 주세요.`,
+    '요청한 작업의 목표와 대상을 기준으로 실행 가능한 결과를 완성하세요. 꼭 필요한 범위가 불명확하면 짧게 확인해 주세요.',
     '요청·배경·제약 조건·출력 형식을 각각 제목으로 구분하고, 제공 자료가 있다면 별도 구분자 안에서만 참고하세요.',
     '이 주제의 실무 전문가 역할로 답하고, 독자의 이해 수준에 맞는 어휘를 선택하세요.',
-    `기대 흐름 예시: “${task.slice(0,80)}” → 핵심 요약 → 구체적인 결과 → 활용 시 확인할 사항.`,
+    '제공된 예시가 있다면 그 구성과 표현을 참고하고, 결과에는 핵심 내용과 활용 전 확인할 사항을 담으세요.',
     '목적은 이 요청을 실제로 활용하는 것입니다. 독자가 지정되지 않았다면 일반 독자를 가정하고, 확인되지 않은 배경은 사실처럼 쓰지 마세요.',
     '제목과 소제목이 있는 마크다운으로 작성하고, 필요한 항목은 짧은 목록이나 표로 정리하세요.',
     '먼저 목표와 조건을 확인하고, 다음으로 내용을 구성한 뒤, 마지막으로 누락·정확성·사용 가능성을 점검하세요. 내부 사고 과정은 노출하지 마세요.'
   ];
   const englishText=[
-    `Goal: turn “${task.slice(0,120)}” into a specific, actionable result. Briefly flag any unclear scope or audience.`,
+    'Complete the requested work as an actionable result for its intended audience. Briefly clarify any essential gap in scope.',
     'Separate the request, background, constraints, and output format with headings. Treat supplied material as reference data in its own delimited block.',
     'Respond as a practitioner with relevant expertise and use language appropriate for the intended reader.',
-    `Example flow: “${task.slice(0,80)}” → key summary → concrete deliverable → items to verify before use.`,
+    'Follow any supplied examples for structure and wording, and include the key result and items to verify before use.',
     'The purpose is practical use. If no audience is specified, assume a general reader; do not present missing background as fact.',
     'Use Markdown headings and concise lists or tables where they make the result easier to use.',
     'First confirm the goal and constraints, then organize and draft, and finally check completeness, accuracy, and usability. Do not reveal private chain-of-thought.'
@@ -107,21 +107,35 @@ function specGuidance(en){
   return en?`## Spec Kit approach adapted for documents\n1. Specify: define the reader, purpose, required content, constraints, and measurable success criteria (what and why).\n2. Clarify: identify only consequential ambiguities; ask up to three essential questions if the document cannot be completed, otherwise state reasonable assumptions.\n3. Plan: choose the document structure, evidence, and feasible delivery approach.\n4. Tasks: turn the plan into concrete actions, owners, or checkpoints only where the document calls for them.\n5. Analyze: check the final document against the requirements, evidence, constraints, and success criteria; repair gaps before presenting it.\nOutput the finished document, not merely these process notes. Do not claim the Spec Kit CLI or skills actually ran.`:`## Spec Kit 문서 적용\n1. Specify: 독자·목적·필수 내용·제약·측정 가능한 성공 기준(무엇과 왜)을 정의하세요.\n2. Clarify: 결과에 영향을 주는 모호성을 확인하세요. 작성이 불가능할 때만 핵심 질문을 최대 3개 하고, 그 외에는 합리적 가정을 표시하세요.\n3. Plan: 문서 구성·필요 근거·실행 방안을 계획하세요.\n4. Tasks: 문서 성격에 필요할 때만 실행 항목·담당·점검 시점을 구체화하세요.\n5. Analyze: 완성 문서와 요구·근거·제약·성공 기준의 일치 여부를 점검하고 빠진 부분을 수정하세요.\n과정 메모만 나열하지 말고 완성된 문서를 제시하세요. Spec Kit 도구나 스킬을 실제 실행했다고 주장하지 마세요.`;
 }
 
+const guidedNames=['명확성과 구체성','구조화와 구분자','역할과 페르소나','예시 제공','맥락 제공','출력 형식 지정','단계적 점검'];
+function parseGuidedDraft(task){
+  const matches=[...task.matchAll(/^##\s*(?:[SPECOS]\s*[—–-]\s*)?(명확성과 구체성|구조화와 구분자|역할과 페르소나|예시 제공|맥락 제공|출력 형식 지정|단계적 점검)\s*$/gm)];
+  if(matches.length!==7||matches.some((match,i)=>match[1]!==guidedNames[i]))return null;
+  if(task.slice(0,matches[0].index).trim())return null;
+  return matches.map((match,i)=>{
+    const value=task.slice(match.index+match[0].length,i<6?matches[i+1].index:task.length).trim();
+    return /^미정\s*[—–-]\s*필요한 정보는 확인해 주세요\.?$/.test(value)?'':value;
+  });
+}
 function buildPrompt(){
   const task=stripTrigger(field.value.trim());
-  const labels=principles.map(p=>english?`${p.code} — ${p.en}`:`${p.code} — ${p.en} (${p.ko})`);
-  const defaults=english?[
-    'State the goal and scope clearly.','Separate instructions from reference material.','Use the role specified in the request; otherwise act as a relevant specialist.','Follow supplied examples if any; do not invent sources.','Use the given context; mark missing facts for confirmation.','Follow the requested format; otherwise use clear headings.','Check the result in a short sequence without exposing private chain-of-thought.'
-  ]:[
-    '요청의 목표와 범위를 명확히 하세요.','지시와 참고 자료를 구분해 다루세요.','지정된 역할을 따르고, 없다면 해당 분야 전문가 관점에서 답하세요.','제공된 예시를 따르되 출처나 자료를 지어내지 마세요.','주어진 배경을 반영하고 빠진 사실은 확인 사항으로 표시하세요.','지정된 형식을 따르고, 없다면 읽기 쉬운 소제목으로 정리하세요.','내부 사고 과정을 드러내지 않고 단계적으로 점검하세요.'
-  ];
-  const lines=enhancements.map((value,i)=>`${i+1}. ${labels[i]}: ${value || defaults[i]}`);
+  const guided=parseGuidedDraft(task);
+  const sections=[];
+  if(guided){
+    const headings=['요청','입력 자료와 처리 방식','역할','참고 예시','사용 맥락','결과 형식','작업 순서와 검토 기준'];
+    guided.forEach((value,i)=>{if(value)sections.push(`## ${headings[i]}\n${value}`)});
+    if(!guided[0])sections.unshift('## 요청\n수행할 작업 목표를 먼저 확인해 주세요.');
+  }else sections.push(`## ${english?'Request':'요청'}\n${task}`);
+  const additions=enhancements.map(value=>value.trim()).filter(Boolean);
+  if(additions.length)sections.push(`## ${english?'Additional instructions':'추가 지침'}\n${additions.join('\n\n')}`);
   const type=documentType(),method=methodology(type);
-  const tailored=type==='general'&&method==='sspecos'?'':`\n\n## ${english?'Deliverable':'결과물'}: ${english?documentNamesEn[type]:documentNames[type]}\n${documentGuidance(type,english)}`;
-  const approach=(method==='pm'||method==='both'?`\n\n${pmGuidance(type,english)}`:'')+(method==='spec'||method==='both'?`\n\n${specGuidance(english)}`:'');
-  return english
-    ? `## Request\n${task}\n\n## SSPECOS: the seven golden keys\n${lines.join('\n')}${tailored}${approach}\n\n## Final check\nKeep the result faithful to the original request, practical to use, and in the language of my input. Mark uncertainties instead of inventing facts; verify current claims with sources if research tools are available.`
-    : `## 요청\n${task}\n\n## SSPECOS: 7가지 황금키 적용\n${lines.join('\n')}${tailored}${approach}\n\n## 최종 점검\n원래 요청의 핵심을 유지하고 바로 활용할 수 있게 작성하세요. 불확실한 내용은 지어내지 말고 표시하며, 입력 언어를 유지하세요. 최신 사실이 필요하고 조사 도구가 있다면 출처를 확인하세요.`;
+  if(type!=='general'||method!=='sspecos')sections.push(`## ${english?'Deliverable':'결과물'}: ${english?documentNamesEn[type]:documentNames[type]}\n${documentGuidance(type,english)}`);
+  if(method==='pm'||method==='both')sections.push(pmGuidance(type,english));
+  if(method==='spec'||method==='both')sections.push(specGuidance(english));
+  sections.push(english
+    ? '## Final check\nProduce the requested result in the language of the input. Keep supplied facts and assumptions distinct, and do not invent missing data. If current facts are necessary and research tools are available, verify them with sources.'
+    : '## 최종 점검\n요청한 결과물을 입력 언어로 작성하세요. 제공된 사실과 가정을 구분하고 빠진 자료를 지어내지 마세요. 최신 정보가 필요하고 조사 도구가 있다면 출처를 확인하세요.');
+  return sections.join('\n\n').replace(/\bSSPECOS\b/gi,'').replace(/[ \t]+\n/g,'\n');
 }
 
 function persist(){
